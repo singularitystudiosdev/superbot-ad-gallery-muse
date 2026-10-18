@@ -15,10 +15,16 @@ builds fail, so new work on this spot is published here.
 - `manifest.json`: the main gallery's entries for this spot (thumbs left out). The Export button at the end of the Speed
   pill reads it to find a variant's offline render, `assets/video/<entry id>.<ratio>.mp4`.
 - `assets/video/`: the offline renders published here. The hotel call has all five ratios with its sound (the call and
-  its score as AAC): 16:9 1920x1080, 9:16 1080x1920, 4:5 864x1080, 1:1 1080x1080, 4:3 1440x1080, 33 s at 30 fps,
-  H.264 (libx264 CRF 20). They are the spot's own frame-exact renderer (`export.64039673.js` `window.__EXPORT.render()`,
-  which muxes the soundtrack a variant registers in `window.__EXPORT_AUDIO`), re-encoded with ffmpeg. Any other variant's
-  Export reads "No render" here until its renders are added.
+  its score as AAC LC, 48 kHz stereo) at X's listed sizes: 9:16 1080x1920, 4:5 1440x1800, 1:1 1200x1200, 16:9 1920x1080,
+  4:3 1440x1080; 34.7 s at 30 fps, H.264 High 4:2:0 at a constant 6 Mbps (X's recommended 1080p bitrate), about 26.7 MB
+  each. They are the spot's own frame-exact renderer (`export.64039673.js` `window.__EXPORT.render()`, which muxes the
+  soundtrack a variant registers in `window.__EXPORT_AUDIO`), re-encoded with ffmpeg. Any other variant's Export reads
+  "No render" here until its renders are added.
+- The hotel call is built to run as an X ad: an on-screen disclosure from the first frame ("Simulated call with
+  AI-generated voices. The hotel, names and number are fictional."), and Superbot's opener matches superbot.gg/features#calls
+  ("I'm Superbot, an AI assistant calling for Sam Rivera. This call is transcribed."). For X, upload the 9:16 (Vertical
+  Video Ads) or the 4:5 (timeline): at a phone's width their transcript reads; the 1:1 reads small and the 16:9 and 4:3
+  not at all, so those stay for desktop and the gallery.
 - `index.html`: forwards to the hotel call.
 
 ## Updating

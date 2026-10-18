@@ -10,7 +10,10 @@
 // Sound. The cut's default soundtrack as the page plays it, mixed offline in the page: the v16 score buffer the player
 // renders (multicat-player.96834de7.js, window.__MC_SCORE, sample 0 = t 0) plus the song from its play press at 0.9
 // (songRules.v16 in beats/multicat.516afb1a.js), faded evenly in dB to -40 dB over SONG_FADE after SONG_FOR, as syncAudio
-// does there. Keep SOUND in step with that file.
+// does there. Keep SOUND in step with that file. A cut whose soundtrack is one narration (`take`: the college cut) reads its
+// timing from the beat itself (window.__COLLEGE_SOUND in beats/college.057e3dda.js) and lays that take alone. A cut whose
+// beat mixes its whole soundtrack itself (`registered`: the refund cut, its score with the call laid in) hands it over as
+// one buffer, window.__EXPORT_AUDIO[variant], and that goes in from t 0 as it is.
 //
 // usage (from the repo root, with the repo served, e.g. `npx http-server -p 8737 -c-1 .`):
 //   node animations/gemini-muse-meme-superbot-6fbc38f8/export-render.07e9fa90.mjs http://127.0.0.1:8737 [16x9,4x3,1x1,4x5,9x16]
@@ -28,6 +31,26 @@ const RENDERS = {
   'multicat-credits': {
     id: 'gemini-muse-meme-multicat-credits-superbot-0808d12c',
     sound: { song: 'media/multicat.516afb1a/tiny-chaos.mp3', songData: 'scenes/tabs-assets/beats/multicat-data.516afb1a.js', level: 0.9, songFor: 5.6, songFade: 0.9 },
+  },
+  // the dog's bare chain (PETS.dog in beats/multicat.516afb1a.js): Tails Up through its second sung line (DOG_SONG_FOR)
+  'multidog-credits': {
+    id: 'gemini-muse-meme-multidog-credits-superbot-17c0131d',
+    sound: { song: 'media/dogs.7b007b09/tails-up.mp3', songData: 'scenes/tabs-assets/beats/multidog-data.7b007b09.js', level: 0.9, songFor: 7.8, songFade: 0.9 },
+  },
+  // the college cut: its narration (media/college.057e3dda/narration.mp3) is its whole soundtrack, timed by the beat
+  college: {
+    id: 'gemini-muse-meme-college-superbot-057e3dda',
+    sound: { take: '__COLLEGE_SOUND' },
+  },
+  // the refund cut: its beat's own mixdown (beats/refund.d3537b02.js: its v16 re-cue with the support call laid in at its cue)
+  refund: {
+    id: 'gemini-muse-meme-refund-superbot-d3537b02',
+    sound: { registered: true },
+  },
+  // the YouTube thumbnail cut: made for a creator to voice over (beats/ytthumb.c4e81a27.js), so its track is silence
+  'yt-thumbnail': {
+    id: 'gemini-muse-meme-yt-thumbnail-superbot-c4e81a27',
+    sound: { silent: true },
   },
 };
 // stage width at 1080 high, and the scale it is drawn at (9:16 to 1080x1920)
@@ -65,30 +88,58 @@ async function open(browser, variant, ar) {
 // the soundtrack, frames/60 long, as a 32-bit float WAV
 async function renderSound(browser, variant, sound, frames, wav) {
   const page = await open(browser, variant, '16x9');
-  // a frame on the cut renders the v16 score (the player prepares it on its first sync)
-  await page.evaluate(() => { window.__AD.seek(0); window.__AD.seek(window.__AD.CYCLE / 2); });
-  await page.waitForFunction(() => window.__MC_SCORE && window.__MC_SCORE.buffer, null, { timeout: 180000 });
-  const { b64, peak } = await page.evaluate(async ({ sound, seconds, SR, spot }) => {
+  if (sound.take) {
+    // a narration-only cut publishes its take once its beat is built (the college beat's window.__COLLEGE_SOUND)
+    await page.waitForFunction((k) => window[k], sound.take, { timeout: 60000 });
+  } else if (sound.registered) {
+    // a self-mixing beat registers its soundtrack once it is built
+    await page.waitForFunction((v) => window.__EXPORT_AUDIO && window.__EXPORT_AUDIO[v], variant, { timeout: 60000 });
+  } else if (sound.silent) {
+    // a cut made to be voiced over waits on nothing: its track stays empty
+  } else {
+    // a frame on the cut renders the v16 score (the player prepares it on its first sync)
+    await page.evaluate(() => { window.__AD.seek(0); window.__AD.seek(window.__AD.CYCLE / 2); });
+    await page.waitForFunction(() => window.__MC_SCORE && window.__MC_SCORE.buffer, null, { timeout: 180000 });
+  }
+  const { b64, peak } = await page.evaluate(async ({ sound, seconds, SR, spot, variant }) => {
     const at = (p) => new URL(p, new URL(spot, location.href)).href;
-    const score = window.__MC_SCORE.buffer, play = window.__MC_SCORE.cues.play;
-    const { DUR } = await import(at(sound.songData));
     const len = Math.round(seconds * SR);
     const ctx = new OfflineAudioContext(2, len, SR);
-    const song = await ctx.decodeAudioData(await (await fetch(at(sound.song))).arrayBuffer());
-    const bed = ctx.createBufferSource();
-    bed.buffer = score;
-    bed.connect(ctx.destination);
-    bed.start(0);
-    const voice = ctx.createBufferSource(), gain = ctx.createGain();
-    voice.buffer = song;
-    const fadeAt = play + sound.songFor, fadeEnd = fadeAt + sound.songFade, stop = play + Math.min(DUR, sound.songFor + sound.songFade);
-    gain.gain.setValueAtTime(sound.level, 0);
-    gain.gain.setValueAtTime(sound.level, fadeAt);
-    gain.gain.exponentialRampToValueAtTime(sound.level * 0.01, fadeEnd);
-    gain.gain.linearRampToValueAtTime(0, stop + 0.01);
-    voice.connect(gain).connect(ctx.destination);
-    voice.start(play, 0);
-    voice.stop(stop + 0.01);
+    // a voice from its press at `level`, faded evenly in dB to -40 dB from fadeAt to fadeEnd, stopped at `stop`
+    const lay = (buf, play, level, fadeAt, fadeEnd, stop) => {
+      const voice = ctx.createBufferSource(), gain = ctx.createGain();
+      voice.buffer = buf;
+      gain.gain.setValueAtTime(level, 0);
+      gain.gain.setValueAtTime(level, fadeAt);
+      gain.gain.exponentialRampToValueAtTime(level * 0.01, fadeEnd);
+      gain.gain.linearRampToValueAtTime(0, stop + 0.01);
+      voice.connect(gain).connect(ctx.destination);
+      voice.start(play, 0);
+      voice.stop(stop + 0.01);
+    };
+    if (sound.take) {
+      // the narration alone, as the beat plays it (no score under it)
+      const t = window[sound.take];
+      lay(await ctx.decodeAudioData(await (await fetch(t.url)).arrayBuffer()), t.play, 1, t.fadeAt, t.fadeEnd, t.stop);
+    } else if (sound.registered) {
+      // the beat's own mixdown, sample 0 = t 0
+      const bed = ctx.createBufferSource();
+      bed.buffer = await window.__EXPORT_AUDIO[variant]();
+      bed.connect(ctx.destination);
+      bed.start(0);
+    } else if (sound.silent) {
+      // nothing is laid: the render is the cut's length of silence, a track for the voiceover to replace
+    } else {
+      const score = window.__MC_SCORE.buffer, play = window.__MC_SCORE.cues.play;
+      const { DUR } = await import(at(sound.songData));
+      const song = await ctx.decodeAudioData(await (await fetch(at(sound.song))).arrayBuffer());
+      const bed = ctx.createBufferSource();
+      bed.buffer = score;
+      bed.connect(ctx.destination);
+      bed.start(0);
+      const fadeAt = play + sound.songFor, fadeEnd = fadeAt + sound.songFade, stop = play + Math.min(DUR, sound.songFor + sound.songFade);
+      lay(song, play, sound.level, fadeAt, fadeEnd, stop);
+    }
     const out = await ctx.startRendering();
     // the file ends on the end card's last frame: 30 ms out, so the cut never clicks
     const L = out.getChannelData(0), R = out.getChannelData(1), tail = Math.round(0.03 * SR);
@@ -100,9 +151,9 @@ async function renderSound(browser, variant, sound, frames, wav) {
     let s = '';
     for (let i = 0; i < bytes.length; i += 32768) s += String.fromCharCode(...bytes.subarray(i, i + 32768));
     return { b64: btoa(s), peak };
-  }, { sound, seconds: frames / FPS, SR, spot: './' });
+  }, { sound, seconds: frames / FPS, SR, spot: './', variant });
   await page.close();
-  console.log(`[sound] ${variant}: ${(frames / FPS).toFixed(3)}s, peak ${(20 * Math.log10(peak)).toFixed(2)} dBFS`);
+  console.log(`[sound] ${variant}: ${(frames / FPS).toFixed(3)}s, ${peak > 0 ? `peak ${(20 * Math.log10(peak)).toFixed(2)} dBFS` : 'silent'}`);
   const pcm = Buffer.from(b64, 'base64');
   const head = Buffer.alloc(44);
   head.write('RIFF', 0); head.writeUInt32LE(36 + pcm.length, 4); head.write('WAVE', 8);
@@ -145,7 +196,8 @@ async function renderOne(browser, variant, id, ar, wav) {
   console.log(`[${ar}] ${out}: ${last + 1} frames, ${((last + 1) / FPS).toFixed(3)}s at ${FPS}fps`);
 }
 
-const browser = await chromium.launch({ headless: true });
+// CHROME: an installed Chrome to drive instead of Playwright's own build (e.g. /Applications/Google Chrome.app/...)
+const browser = await chromium.launch({ headless: true, ...(process.env.CHROME ? { executablePath: process.env.CHROME } : {}) });
 try {
   for (const [variant, { id, sound }] of Object.entries(RENDERS)) {
     if (only && only !== variant) continue;

@@ -23,6 +23,7 @@ import { loadSheet as loadFrameSheet } from './bakery.005f5570.js?v=3';
 import { shareBtn } from './share.29a362ea.js';
 import { DUR, LINES, WORDS, FPS, LEVEL } from './refund-data.d3537b02.js';
 import { makePlayer } from './refund-player.d3537b02.js';
+import { renderScore } from './refund-score.d3537b02.js';
 import { music } from '../../../music.47e5d94a.js?v=2';
 import { variant } from '../../../variant.9e82faf1.js?v=3';
 import { songLevel } from '../../../sound.96834de7.js?v=2';
@@ -35,7 +36,7 @@ const CALL = asset('media/refund.d3537b02/call.mp3');
 
 // the company and what superbot gets back from it (made up: a real one would be getting the 1-star reviews)
 const CO = 'Nimbus+', PHONE = '+1 (800) 555-0199', MAIL_TO = 'support@nimbusplus.tv';
-const AMOUNT = '$119.99', CARD = 'Visa ending 4242', REF = 'NB-48213';
+const AMOUNT = '$119.99', CARD = 'card ending 4242', REF = 'NB-48213';
 const ASK2 = 'Also send support an email requesting my refund at the same time';
 const ASK3 = 'Ok rate them 1 star on every possible rating platform';
 const SAY1 = `Calling ${CO} support now.`;
@@ -43,10 +44,12 @@ const SAY2 = 'On it. Emailing support while I hold.';
 const SAY3 = `Dana from ${CO} picked up.`;
 const SUBJECT = `Refund request for my ${CO} Premium renewal`;
 const BODY = `Hi ${CO} Support,\n\nI cancelled my Premium plan on Oct 1, but was still charged ${AMOUNT} for the annual renewal on Oct 3. Please refund the full ${AMOUNT} to my original payment method.\n\nThanks,\nSam`;
-// the ten platforms the review goes up on, in posting order: [tile, name]
+// the ten platforms the review goes up on, in posting order: [tile, name]. All made up, as Nimbus+ is (Gmail is the one
+// real brand on show): a review site, a maps app, a local-chatter app, a consumer bureau, two app stores, a TV store, a
+// shopping store, a deals report and a verdicts site, so "every possible platform" still reads
 const PLATFORMS = [
-  ['trustpilot', 'Trustpilot'], ['google', 'Google'], ['yelp', 'Yelp'], ['bbb', 'BBB'], ['appstore', 'App Store'],
-  ['googleplay', 'Google Play'], ['roku', 'Roku'], ['amazon', 'Amazon Appstore'], ['consumeraffairs', 'ConsumerAffairs'], ['smartcustomer', 'SmartCustomer'],
+  ['truvio', 'Truvio'], ['mapwise', 'Mapwise'], ['chirply', 'Chirply'], ['fairmark', 'Fairmark Bureau'], ['appvault', 'Appvault'],
+  ['playdock', 'PlayDock'], ['channelry', 'Channelry'], ['shelfly', 'Shelfly'], ['dealscope', 'Dealscope'], ['verdictly', 'Verdictly'],
 ];
 const SAY4 = 'On it. Posting your 1-star review everywhere it can go.';
 
@@ -194,7 +197,7 @@ export default {
 
     // the score: 16 · Punchy premium groove re-cued to this chain, played on the clock while v16 is the pick (the
     // variant's default, music.47e5d94a.js DEFAULTS)
-    const score = makePlayer({
+    const cues = {
       typing: [{ text: k.askBy[ID], s: k.s, end: k.typeEnd }, { text: M.ask, s: M.s, end: M.typeEnd }, { text: R.ask, s: R.s, end: R.typeEnd }],
       sends: [k.send, M.send, R.send],
       camera: k.send, // the first send drops the composer and pulls the camera out (tabs.9b47fc30.js)
@@ -204,8 +207,24 @@ export default {
       pick: T.pick, voice: [T.a0, T.a0 + DUR], result: T.result,
       posts: R.posts, postWin: [R.q0 + 0.3, R.posts[R.posts.length - 1]],
       cover: T.cut, pop: T.cut + END_DELAY, word: T.cut + END_DELAY + 0.3, end: T.end,
-    });
+    };
+    const score = makePlayer(cues);
     addEventListener('variantchange', () => score.stop());
+    // the cut's whole soundtrack for its offline renders (window.__EXPORT_AUDIO, read by export-render.07e9fa90.mjs, which
+    // makes the files the Export button downloads): this score's own render with the call laid in at its cue, at the level
+    // the page plays it (sound.96834de7.js songLevel, 1 unmuted), so the file's sound is sample-exact
+    let mixdown = null;
+    (window.__EXPORT_AUDIO ||= {})[ID] = () => (mixdown ||= Promise.all([
+      renderScore(cues),
+      fetch(CALL).then((r) => { if (!r.ok) throw new Error(`${r.status} ${CALL}`); return r.arrayBuffer(); }).then((ab) => new OfflineAudioContext(2, 1, 48000).decodeAudioData(ab)),
+    ]).then(([{ buffer }, call]) => {
+      const at = Math.round(T.a0 * buffer.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const out = buffer.getChannelData(c), voice = call.getChannelData(Math.min(c, call.numberOfChannels - 1));
+        for (let i = 0; i < voice.length && at + i < out.length; i++) out[at + i] += voice[i];
+      }
+      return buffer;
+    }));
 
     // 1. the call, in the engine's own reply
     const say1 = sayEl(x, SAY1);
