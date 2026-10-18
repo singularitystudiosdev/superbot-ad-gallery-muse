@@ -21,11 +21,11 @@ builds fail, so new work on this spot is published here.
   soundtrack a variant registers in `window.__EXPORT_AUDIO`), re-encoded with ffmpeg. Any other variant's Export reads
   "No render" here until its renders are added. `assets/thumbs/` holds a JPEG poster per ratio (a mid-call frame) for
   the ad's thumbnail.
-- The hotel call is cut for X: large captions of the call so it reads with the sound off (about 18pt on a phone), and
-  Superbot's opener as superbot.gg/features#calls has it ("I'm Superbot, an AI assistant calling for Sam Rivera. This
-  call is transcribed."). The call is staged (AI-generated voices; the hotel, names and number fictional) and, since
-  2026-10-17, nothing on screen says so: the on-screen disclosure was taken out on request, so a post running it has to
-  carry that disclosure itself. For X, upload the 9:16
+- The hotel call is cut for X: Superbot's opener as superbot.gg/features#calls has it ("I'm Superbot, an AI assistant
+  calling for Sam Rivera. This call is transcribed."). The call is staged (AI-generated voices; the hotel, names and
+  number fictional) and, since 2026-10-17, nothing on screen says so: the on-screen disclosure was taken out on request,
+  so a post running it has to carry that disclosure itself. Its large captions were taken out on request too, so with
+  the sound off only the call card's small transcript carries the call. For X, upload the 9:16
   (Vertical Video Ads) or the 4:5 or 1:1 (timeline); the 16:9 and 4:3 read too small on a phone, so they stay for
   desktop and the gallery. Run it as a standalone video ad, with no website card: superbot.gg's pages list Grok among
   the supported models, which X's Unauthorized References policy can read as a claimed integration.
