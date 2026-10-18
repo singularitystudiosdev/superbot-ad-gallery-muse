@@ -16,15 +16,18 @@ builds fail, so new work on this spot is published here.
   pill reads it to find a variant's offline render, `assets/video/<entry id>.<ratio>.mp4`.
 - `assets/video/`: the offline renders published here. The hotel call has all five ratios with its sound (the call and
   its score as AAC LC, 48 kHz stereo) at X's listed sizes: 9:16 1080x1920, 4:5 1440x1800, 1:1 1200x1200, 16:9 1920x1080,
-  4:3 1440x1080; 34.7 s at 30 fps, H.264 High 4:2:0 at a constant 6 Mbps (X's recommended 1080p bitrate), about 26.7 MB
+  4:3 1440x1080; 34.7 s at 30 fps, H.264 High 4:2:0 at a constant 6 Mbps (X's recommended 1080p bitrate), about 26.6 MB
   each. They are the spot's own frame-exact renderer (`export.64039673.js` `window.__EXPORT.render()`, which muxes the
   soundtrack a variant registers in `window.__EXPORT_AUDIO`), re-encoded with ffmpeg. Any other variant's Export reads
-  "No render" here until its renders are added.
-- The hotel call is built to run as an X ad: an on-screen disclosure from the first frame ("Simulated call with
-  AI-generated voices. The hotel, names and number are fictional."), and Superbot's opener matches superbot.gg/features#calls
-  ("I'm Superbot, an AI assistant calling for Sam Rivera. This call is transcribed."). For X, upload the 9:16 (Vertical
-  Video Ads) or the 4:5 (timeline): at a phone's width their transcript reads; the 1:1 reads small and the 16:9 and 4:3
-  not at all, so those stay for desktop and the gallery.
+  "No render" here until its renders are added. `assets/thumbs/` holds a JPEG poster per ratio (a mid-call frame) for
+  the ad's thumbnail.
+- The hotel call is built to run as an X ad: an on-screen disclosure from the first frame to the end card ("Simulated
+  call with AI-generated voices. The hotel, names and number are fictional.", about 13pt on a phone), large captions of
+  the call so it reads with the sound off (about 18pt on a phone), and Superbot's opener as superbot.gg/features#calls
+  has it ("I'm Superbot, an AI assistant calling for Sam Rivera. This call is transcribed."). For X, upload the 9:16
+  (Vertical Video Ads) or the 4:5 or 1:1 (timeline); the 16:9 and 4:3 read too small on a phone, so they stay for
+  desktop and the gallery. Run it as a standalone video ad, with no website card: superbot.gg's pages list Grok among
+  the supported models, which X's Unauthorized References policy can read as a claimed integration.
 - `index.html`: forwards to the hotel call.
 
 ## Updating
